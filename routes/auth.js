@@ -7,7 +7,6 @@ const { User , validateRegisterUser ,validateLoginUser , validateUpdateUser , va
 const { UserVerification } = require("../models/UserVerification")
 const { BlacklistedToken } = require("../models/BlacklistedToken");
 const { verifyToken } = require("../middlewares/verifyToken");
-//const {  verifyTokenAndBlackList} = require("../middlewares/verifyToken")
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
 dotenv.config();
