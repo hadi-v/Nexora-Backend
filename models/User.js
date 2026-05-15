@@ -34,8 +34,15 @@ const UserSchema = new mongoose.Schema({
     }
 }, {timestamps: true});
 
-UserSchema.methods.generateToken = function(){
-    return jwt.sign({id: this._id , isAdmin: this.isAdmin},process.env.JWT_SECRET_KEY);
+UserSchema.methods.generateToken = function(req){
+    return jwt.sign(
+        {
+            id: this._id,
+            isAdmin: this.isAdmin,
+            ua: req.headers["user-agent"] 
+        },
+        process.env.JWT_SECRET_KEY
+    );
 }
 
 const User = mongoose.model("User" , UserSchema);

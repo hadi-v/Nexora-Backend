@@ -13,6 +13,7 @@ app.use(express.json());
 
 app.use("/api/auth",authPath);
 
+
 app.use(notFound);
 app.use(errorHandler);
 

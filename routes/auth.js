@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const { User , validateRegisterUser ,validateLoginUser , validateUpdateUser , validateNewPassword} = require("../models/User");
 const { UserVerification } = require("../models/UserVerification")
 const { BlacklistedToken } = require("../models/BlacklistedToken");
+const { verifyToken } = require("../middlewares/verifyToken");
 //const {  verifyTokenAndBlackList} = require("../middlewares/verifyToken")
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
@@ -47,7 +48,7 @@ router.post("/register", asyncHandler(async (req, res) => {
 
     const otp = await sentOtp(result);
 
-    const token = user.generateToken();
+    const token = user.generateToken(req);
 
     res.status(201).json({
         message: "User registered successfully. OTP sent to email.",
@@ -216,7 +217,7 @@ router.post("/login", asyncHandler(async (req,res)=>{
        return res.status(400).json({ message: "Account not verified. Please verify your email first" });
         }
 
-        const token = user.generateToken();
+        const token = user.generateToken(req);
         const { password , ...other} = user._doc;
         res.status(200).json({
         message: "User logged in successfully",
@@ -275,45 +276,8 @@ const sentOtp = async ({ _id, email }) => {
     return otp;
 };
 
-function verifyToken(req, res, next) {
-    
-    const token = req.headers.token;
 
-    if (!token) {
-        return res.status(401).json({ message: "No token provided" });
-    }
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-        req.user = decoded;
-        next();
-    } catch (error) {
-        return res.status(401).json({ message: "Invalid token" });
-    }
-}
-
-async function verifyTokenAndBlackList(req, res, next) {
-    const token = req.headers.token;
-
-    if (!token) {
-        return res.status(401).json({ message: "No token provided" });
-    }
-
-    try {
-        const isBlacklisted = await BlacklistedToken.findOne({ token });
-        if (isBlacklisted) {
-            return res.status(401).json({ message: "Token is blacklisted (logged out)" });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-        req.user = decoded;
-
-        next();
-
-    } catch (error) {
-        return res.status(401).json({ message: "Invalid token" });
-    }
-}
 
 
 module.exports=router;
+
