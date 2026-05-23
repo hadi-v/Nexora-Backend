@@ -51,7 +51,7 @@ router.post("/register", asyncHandler(async (req, res) => {
 
     res.status(201).json({
         message: "User registered successfully. OTP sent to email.",
-        data: { userId: result._id, email: result.email, tokem:token, otp:otp}
+        data: { userId: result._id, email: result.email, token:token, otp:otp}
     });
 
 }));
