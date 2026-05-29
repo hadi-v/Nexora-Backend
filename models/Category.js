@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const Joi = require('joi');
 
-
 const CategorySchema = new mongoose.Schema({
     categoryName:{
 

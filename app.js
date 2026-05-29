@@ -1,6 +1,7 @@
 const express = require("express");
 const authPath = require("./routes/auth");
 const userPath = require("./routes/user");
+const cartPath = require("./routes/cart");
 const { notFound , errorHandler} = require("./middlewares/errors");
 const dotenv = require("dotenv");
 const connectToDB = require("./config/db");
@@ -16,6 +17,7 @@ app.use("/images", express.static("images"));
 
 app.use("/api/auth",authPath);
 app.use("/api/user",userPath);
+app.use("/api/cart",cartPath);
 
 
 app.use(notFound);

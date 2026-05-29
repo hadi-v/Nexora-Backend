@@ -144,9 +144,19 @@ router.post("/addProduct", verifyToken, upload.array("images", 6),asyncHandler(a
 
     const images = req.files.map(file => file.path);
 
+     const existingProduct = await Product.findOne({
+
+    productName: req.body.productName.trim().toLowerCase()
+    
+    });
+
+    if (existingProduct) {
+    return res.status(400).json({ message: "Product already exists" });
+    }
+
     const product = new Product({
         category: category._id,
-        productName: req.body.productName,
+        productName: req.body.productName.trim().toLowerCase(),
         description: req.body.description,
         price: req.body.price,
         stock: req.body.stock,
@@ -249,8 +259,6 @@ router.get("/users", verifyToken,asyncHandler(async (req,res) => {
         data: users
     });
 }));
-
-
 
 
 module.exports=router

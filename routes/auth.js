@@ -56,7 +56,6 @@ router.post("/register", asyncHandler(async (req, res) => {
 
 }));
 
-
 router.post("/verify", verifyToken, asyncHandler(async (req, res) => {
 
     const { otp } = req.body;
@@ -91,6 +90,54 @@ router.post("/verify", verifyToken, asyncHandler(async (req, res) => {
 
 }));
 
+router.post("/resendOtp", asyncHandler(async (req, res) => {
+
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.verified) {
+        return res.status(400).json({ message: "Account already verified" });
+    }
+
+    await UserVerification.deleteMany({ userId: user._id });
+
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    const hashedOTP = await bcrypt.hash(otp.toString(), 10);
+
+    await new UserVerification({
+        userId: user._id,
+        otp: hashedOTP,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 3600000 
+    }).save();
+
+    await transporter.sendMail({
+        from: `"Nexora" <${process.env.AUTH_EMAIL}>`,
+        to: email,
+        subject: "Your New Verification Code",
+        html: `
+            <div style="font-family: Arial; padding: 20px;">
+                <h2>New Verification Code</h2>
+                <p>Here is your new OTP:</p>
+                <h1 style="letter-spacing: 5px;">${otp}</h1>
+            </div>
+        `
+    });
+
+    res.json({
+        message: "New OTP sent to email",
+        otp: otp
+    });
+
+}));
 
 router.post("/forgotPassword", asyncHandler(async (req, res) => {
 
@@ -143,7 +190,6 @@ router.post("/forgotPassword", asyncHandler(async (req, res) => {
     });
 }));
 
-
 router.post("/resetPassword", asyncHandler(async (req, res) => {
 
     const { otp, newPassword } = req.body;
@@ -191,7 +237,6 @@ router.post("/resetPassword", asyncHandler(async (req, res) => {
     res.json({ message: "Password reset successfully" });
 }));
 
-
 router.post("/login", asyncHandler(async (req,res)=>{
 
         const { error } =  validateLoginUser(req.body);
@@ -228,7 +273,6 @@ router.post("/login", asyncHandler(async (req,res)=>{
     }
 ));
 
-
 router.post("/logout", verifyToken, asyncHandler(async (req, res) => {
 
     const token = req.headers.token;
@@ -241,9 +285,6 @@ router.post("/logout", verifyToken, asyncHandler(async (req, res) => {
 
     return res.json({ message: "User Logged out successfully" });
 }));
-
-
-
 
 
 const sentOtp = async ({ _id, email }) => {
@@ -274,8 +315,6 @@ const sentOtp = async ({ _id, email }) => {
 
     return otp;
 };
-
-
 
 
 module.exports=router;
