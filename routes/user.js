@@ -4,6 +4,9 @@ const asyncHandler = require("express-async-handler");
 const { User , validateUpdateUser } = require("../models/User");
 const { Store , validateUpdateStore } = require("../models/Store");
 const { Category , validateCategory } = require("../models/Category");
+const { Cart } = require("../models/Cart");
+const { CartItem } = require("../models/Cart_Item");
+const { BlacklistedToken } = require("../models/BlacklistedToken");
 const { Product , validateProduct , validateUpdateProduct } = require("../models/Product");
 const { verifyToken } = require("../middlewares/verifyToken");
 const  upload  = require("../middlewares/upload");
@@ -26,7 +29,6 @@ router.put("/updateUser", verifyToken, asyncHandler(async (req , res) => {
         return res.status(404).json({ message: "User not found" });
     }
 
-    if (req.body.email) user.email = req.body.email;
     if (req.body.userName) user.userName = req.body.userName;
     if (req.body.password) {
         const salt = await bcrypt.genSalt(10);
@@ -40,6 +42,31 @@ router.put("/updateUser", verifyToken, asyncHandler(async (req , res) => {
     res.json({
         message: "User updated successfully",
         user: other
+    });
+
+}));
+
+router.delete("/deleteAccount", verifyToken, asyncHandler(async (req, res) => {
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+        return res.status(404).json({ message: "Account not found" });
+    }
+
+    const cart = await Cart.findOne({ userId: req.user.id });
+
+    if (cart) {
+        await CartItem.deleteMany({ cartId: cart._id });
+        await Cart.deleteOne({ _id: cart._id });
+    }
+
+    await BlacklistedToken.deleteMany({ userId: req.user.id });
+
+    await User.findByIdAndDelete(req.user.id);
+
+    res.status(200).json({
+        message: "Account and all related data deleted successfully"
     });
 
 }));
@@ -101,7 +128,7 @@ router.post("/addCategory", verifyToken, asyncHandler(async (req, res) => {
         return res.status(403).json({ message: "Only admin can add categories" });
     }
 
-    const existingCategory = await Category.findOne({ categoryName: req.body.categoryName });
+    const existingCategory = await Category.findOne({ categoryName: req.body.categoryName.trim().toLowerCase() });
     if (existingCategory) {
         return res.status(400).json({ message: "Category already exists" });
     }
@@ -120,6 +147,14 @@ router.post("/addCategory", verifyToken, asyncHandler(async (req, res) => {
 }));
 
 router.post("/addProduct", verifyToken, upload.array("images", 6),asyncHandler(async (req, res) => {
+
+    if (req.body.colors) {
+    try {
+        req.body.colors = JSON.parse(req.body.colors);
+    } catch (err) {
+        return res.status(400).json({ message: "Invalid colors format" });
+      }
+    }
 
     const { error } = validateProduct(req.body);
     if (error) {
@@ -144,11 +179,7 @@ router.post("/addProduct", verifyToken, upload.array("images", 6),asyncHandler(a
 
     const images = req.files.map(file => file.path);
 
-     const existingProduct = await Product.findOne({
-
-    productName: req.body.productName.trim().toLowerCase()
-    
-    });
+    const existingProduct = await Product.findOne({productName: req.body.productName.trim().toLowerCase()});
 
     if (existingProduct) {
     return res.status(400).json({ message: "Product already exists" });
@@ -160,7 +191,8 @@ router.post("/addProduct", verifyToken, upload.array("images", 6),asyncHandler(a
         description: req.body.description,
         price: req.body.price,
         stock: req.body.stock,
-        images: images
+        images: images,
+        colors: req.body.colors
     });
 
     await product.save();
@@ -183,7 +215,57 @@ router.get("/products", verifyToken,asyncHandler(async (req, res) => {
     });
 }));
 
+router.get("/filter", asyncHandler(async (req, res) => {
+
+    const { name, minPrice, maxPrice, category } = req.query;
+
+    let filter = {};
+
+    if (name) {
+        filter.productName = {
+            $regex: name,
+            $options: "i"
+        };
+    }
+    if (minPrice && maxPrice) {
+        filter.price = { $gte: Number(minPrice), $lte: Number(maxPrice) };
+    } 
+    else if (minPrice) {
+        filter.price = { $gte: Number(minPrice) };
+    } 
+    else if (maxPrice) {
+        filter.price = { $lte: Number(maxPrice) };
+    }
+    if (category) {
+        
+        const cat = await Category.findOne({categoryName: { $regex: category, $options: "i" }});
+        if (!cat) {
+            return res.status(404).json({ message: "Category not found" });
+        }
+
+        filter.category = cat._id;
+    }
+
+    const productsList = await Product.find(filter)
+        .populate("category", ["_id", "categoryName"]);
+
+    res.status(200).json({
+        message: "Filtered products",
+        count: productsList.length,
+        data: productsList
+    });
+
+}));
+
 router.put("/updateProduct/:id", verifyToken, upload.array("images", 6),asyncHandler(async (req, res) => {
+
+    if (req.body.colors) {
+    try {
+        req.body.colors = JSON.parse(req.body.colors);
+    } catch (err) {
+        return res.status(400).json({ message: "Invalid colors format" });
+    }
+    }
 
     if (!req.user.isAdmin) {
         return res.status(403).json({ message: "Only admin can update products" });
@@ -211,7 +293,7 @@ router.put("/updateProduct/:id", verifyToken, upload.array("images", 6),asyncHan
         product.category = category._id;
     }
 
-    if (req.body.productName) product.productName = req.body.productName;
+    if (req.body.productName) product.productName = req.body.productName.trim().toLowerCase();
     if (req.body.description) product.description = req.body.description;
     if (req.body.price) product.price = req.body.price;
     if (req.body.stock) product.stock = req.body.stock;
@@ -220,7 +302,8 @@ router.put("/updateProduct/:id", verifyToken, upload.array("images", 6),asyncHan
         const newImages = req.files.map(file => file.path);
         product.images = newImages; 
 
-    }   
+    }  
+    if (req.body.colors) product.colors = req.body.colors;
 
     await product.save();
 

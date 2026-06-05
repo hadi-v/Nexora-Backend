@@ -40,7 +40,8 @@ router.post("/register", asyncHandler(async (req, res) => {
     user = new User({
         email: req.body.email,
         userName: req.body.userName,
-        password: req.body.password
+        password: req.body.password,
+        birthDate: req.body.birthDate
     });
 
     const result = await user.save();
@@ -285,7 +286,6 @@ router.post("/logout", verifyToken, asyncHandler(async (req, res) => {
 
     return res.json({ message: "User Logged out successfully" });
 }));
-
 
 const sentOtp = async ({ _id, email }) => {
 

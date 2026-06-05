@@ -31,8 +31,12 @@ const ProductSchema = new mongoose.Schema({
         min: 0
     },
     images: {
-    type: [String],   
-    default: []
+        type: [String],   
+        default: []
+    },
+        colors: {
+        type: [String],
+        default: []
     }
 }, {timestamps: true});
 
@@ -46,7 +50,8 @@ function validateProduct(obj){
         description: Joi.string().trim(),
         price: Joi.number().min(0).required(),
         stock: Joi.number().min(0).required(),
-        images: Joi.array().items(Joi.string())
+        images: Joi.array().items(Joi.string()),
+        colors: Joi.array().items(Joi.string())
     });
     return schema.validate(obj);
 }
@@ -57,7 +62,8 @@ function validateUpdateProduct(obj){
         description: Joi.string().trim(),
         price: Joi.number().min(0),
         stock: Joi.number().min(0),
-        images: Joi.array().items(Joi.string())
+        images: Joi.array().items(Joi.string()),
+        colors: Joi.array().items(Joi.string())
     });
     return schema.validate(obj);
 }
