@@ -43,7 +43,6 @@ UserSchema.methods.generateToken = function(req){
         {
             id: this._id,
             isAdmin: this.isAdmin,
-            ua: req.headers["user-agent"] 
         },
         process.env.JWT_SECRET_KEY
     );

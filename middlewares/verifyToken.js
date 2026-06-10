@@ -17,10 +17,6 @@ async function verifyToken(req, res, next) {
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
 
-        if (decoded.ua !== req.headers["user-agent"]) {
-            return res.status(401).json({ message: "Token not valid for this device" });
-        }
-
         req.user = decoded;
         next();
 

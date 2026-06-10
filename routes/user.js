@@ -8,6 +8,8 @@ const { Cart } = require("../models/Cart");
 const { CartItem } = require("../models/Cart_Item");
 const { BlacklistedToken } = require("../models/BlacklistedToken");
 const { Product , validateProduct , validateUpdateProduct } = require("../models/Product");
+const { ShippingAddress, validateShippingAddressSchema } = require("../models/Shipping_Address");
+const { Governorate } = require("../models/Governorate");
 const { verifyToken } = require("../middlewares/verifyToken");
 const  upload  = require("../middlewares/upload");
 const bcrypt = require("bcryptjs");
@@ -342,6 +344,71 @@ router.get("/users", verifyToken,asyncHandler(async (req,res) => {
         data: users
     });
 }));
+
+router.post("/addAddress", verifyToken, asyncHandler(async (req, res) => {
+
+    const { error } = validateShippingAddressSchema(req.body);
+    if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const { governorateId, locationDetails } = req.body;
+
+    const governorate = await Governorate.findById(governorateId);
+    if (!governorate) {
+        return res.status(404).json({ message: "Governorate not found" });
+    }
+
+    const address = new ShippingAddress({
+        userId: req.user.id,
+        governorateId,
+        locationDetails
+    });
+
+    await address.save();
+
+    res.status(201).json({
+        message: "Shipping address added successfully",
+        address
+    });
+
+}));
+
+router.delete("/deleteAddress/:id", verifyToken, asyncHandler(async (req, res) => {
+
+    const addressId = req.params.id;
+
+    const address = await ShippingAddress.findById(addressId);
+    if (!address) {
+        return res.status(404).json({ message: "Address not found" });
+    }
+
+    if (address.userId.toString() !== req.user.id) {
+
+        return res.status(403).json({ message: "You are not allowed to delete this address" });
+
+    }
+
+    await ShippingAddress.findByIdAndDelete(addressId);
+
+    res.status(200).json({
+        message: "Address deleted successfully"
+    });
+
+}));
+
+router.get("/addresses", verifyToken, asyncHandler(async (req, res) => {
+
+    const addresses = await ShippingAddress.find({ userId: req.user.id }).populate("governorateId", "name");
+    
+    res.status(200).json({
+        message: "User addresses",
+        count: addresses.length,
+        data: addresses
+    });
+
+}));
+
 
 
 module.exports=router

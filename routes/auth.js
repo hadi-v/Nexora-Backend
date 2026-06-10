@@ -48,7 +48,7 @@ router.post("/register", asyncHandler(async (req, res) => {
 
     const otp = await sentOtp(result);
 
-    const token = user.generateToken(req);
+    const token = user.generateToken();
 
     res.status(201).json({
         message: "User registered successfully. OTP sent to email.",
@@ -262,7 +262,7 @@ router.post("/login", asyncHandler(async (req,res)=>{
        return res.status(400).json({ message: "Account not verified. Please verify your email first" });
         }
 
-        const token = user.generateToken(req);
+        const token = user.generateToken();
         const { password , ...other} = user._doc;
         res.status(200).json({
         message: "User logged in successfully",
@@ -282,7 +282,7 @@ router.post("/logout", verifyToken, asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Invalid token" });
     }
 
-    await BlacklistedToken.create({ token });
+    await BlacklistedToken.create({ token , userId: req.user.id });
 
     return res.json({ message: "User Logged out successfully" });
 }));
