@@ -2,6 +2,8 @@ const express = require("express");
 const authPath = require("./routes/auth");
 const userPath = require("./routes/user");
 const cartPath = require("./routes/cart");
+const orderPath = require("./routes/order");
+const productPath = require("./routes/product")
 const { notFound , errorHandler} = require("./middlewares/errors");
 const dotenv = require("dotenv");
 const connectToDB = require("./config/db");
@@ -18,6 +20,8 @@ app.use("/images", express.static("images"));
 app.use("/api/auth",authPath);
 app.use("/api/user",userPath);
 app.use("/api/cart",cartPath);
+app.use("/api/order",orderPath);
+app.use("/api/product",productPath);
 
 
 app.use(notFound);

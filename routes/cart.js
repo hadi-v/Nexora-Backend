@@ -8,17 +8,27 @@ const { verifyToken } = require("../middlewares/verifyToken");
 const dotenv = require("dotenv");
 dotenv.config();
 
+
 router.post("/addToCart", verifyToken, asyncHandler(async (req, res) => {
 
-    const { productId, quantity } = req.body;
+    const { productId, quantity, color } = req.body;
 
     if (!quantity || quantity < 1) {
         return res.status(400).json({ message: "Quantity must be at least 1" });
     }
 
+    if (!color) {
+        return res.status(400).json({ message: "Color is required" });
+    }
+
     const product = await Product.findById(productId);
     if (!product) {
         return res.status(404).json({ message: "Product not found" });
+    }
+
+    if (!product.colors.includes(color.toLowerCase())) {
+        return res.status(400).json({
+            message: `Color '${color}' is not available for this product`});
     }
 
     let cart = await Cart.findOne({ userId: req.user.id });
@@ -28,7 +38,8 @@ router.post("/addToCart", verifyToken, asyncHandler(async (req, res) => {
 
     let cartItem = await CartItem.findOne({
         cartId: cart._id,
-        productId: productId
+        productId: productId,
+        color: color.toLowerCase()
     }).populate("productId", "productName price");
 
     if (cartItem) {
@@ -53,7 +64,8 @@ router.post("/addToCart", verifyToken, asyncHandler(async (req, res) => {
         cartItem = await CartItem.create({
             cartId: cart._id,
             productId,
-            quantity
+            quantity,
+            color: color.toLowerCase()
         });
     }
 
@@ -90,6 +102,7 @@ router.get("/userCart", verifyToken, asyncHandler(async (req, res) => {
             productName: product.productName,
             price: product.price,
             quantity: item.quantity,
+            color: item.color, 
             subtotal
         };
     });

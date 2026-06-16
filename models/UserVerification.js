@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const UserVerificationSchema = new mongoose.Schema({
     userId:{
         type: String,
+        ref: "User",
         required: true
     },
     otp:{
@@ -19,7 +20,6 @@ const UserVerificationSchema = new mongoose.Schema({
         default: Date.now
     }
 });
-
 
 const UserVerification = mongoose.model("UserVerification" ,UserVerificationSchema);
 

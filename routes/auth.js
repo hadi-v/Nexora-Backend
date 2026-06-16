@@ -4,6 +4,7 @@ const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { User , validateRegisterUser ,validateLoginUser , validateUpdateUser , validateNewPassword} = require("../models/User");
+const { List } = require("../models/List");
 const { UserVerification } = require("../models/UserVerification")
 const { BlacklistedToken } = require("../models/BlacklistedToken");
 const { verifyToken } = require("../middlewares/verifyToken");
@@ -41,7 +42,8 @@ router.post("/register", asyncHandler(async (req, res) => {
         email: req.body.email,
         userName: req.body.userName,
         password: req.body.password,
-        birthDate: req.body.birthDate
+        birthDate: req.body.birthDate,
+        phone: req.body.phone
     });
 
     const result = await user.save();
@@ -86,6 +88,11 @@ router.post("/verify", verifyToken, asyncHandler(async (req, res) => {
     await UserVerification.deleteOne({ userId });
 
     await User.findByIdAndUpdate(userId, {verified: true });
+
+    await List.create({
+      userId: userId,
+      name: "favourite"
+    });
 
     res.json({ message: "Email verified successfully" });
 
@@ -208,7 +215,9 @@ router.post("/resetPassword", asyncHandler(async (req, res) => {
     }
 
     const { error } = validateNewPassword({newPassword});
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error){
+         return res.status(400).json({ message: error.details[0].message });
+        }
 
     const user = await User.findById(decoded.id);
     if (!user) {

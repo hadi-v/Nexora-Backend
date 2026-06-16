@@ -28,6 +28,14 @@ const UserSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
+    phone:{               
+        type: String,
+        required: true
+    },
+    phoneVerified: {
+    type: Boolean,
+    default: false
+    },
     isAdmin:{
         type: Boolean,
         default: false
@@ -55,7 +63,8 @@ function validateRegisterUser(obj){
         email:  Joi.string().trim().min(7).max(30).required().email(),
         userName: Joi.string().trim().min(3).max(20).required(),
         password: Joi.string().trim().min(3).required(),
-        birthDate: Joi.date().required()
+        birthDate: Joi.date().required(),
+        phone: Joi.string().pattern(/^09\d{8}$/).required().messages({"string.pattern.base": "Phone number must start with 09 and be 10 digits"})
     });
     return schema.validate(obj);
 }
@@ -72,6 +81,7 @@ function validateUpdateUser(obj){
     const schema = Joi.object({
         userName: Joi.string().trim().min(3).max(20),
         password: Joi.string().trim().min(3),
+        phone: Joi.string().pattern(/^09\d{8}$/).messages({"string.pattern.base": "Phone number must start with 09 and be 10 digits"})
     });
     return schema.validate(obj);
 }

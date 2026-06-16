@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const Joi = require('joi');
 
 const ProductSchema = new mongoose.Schema({
-
     category:{
         type: mongoose.Schema.Types.ObjectId,
         required: true,
@@ -34,9 +33,13 @@ const ProductSchema = new mongoose.Schema({
         type: [String],   
         default: []
     },
-        colors: {
+    colors: {
         type: [String],
         default: []
+    },
+    averageRating: {
+    type: Number,
+    default: 0
     }
 }, {timestamps: true});
 
@@ -51,7 +54,7 @@ function validateProduct(obj){
         price: Joi.number().min(0).required(),
         stock: Joi.number().min(0).required(),
         images: Joi.array().items(Joi.string()),
-        colors: Joi.array().items(Joi.string())
+        colors: Joi.array().items(Joi.string()).required()
     });
     return schema.validate(obj);
 }

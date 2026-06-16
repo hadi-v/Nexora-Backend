@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const Joi = require('joi');
 
 const StoreSchema = new mongoose.Schema({
-
     owner:{
         type: mongoose.Schema.Types.ObjectId,
         required: true,
