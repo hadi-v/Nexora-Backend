@@ -19,6 +19,20 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 
+router.get("/profile", verifyToken, asyncHandler(async (req,res) =>{
+    
+    const user = await User.findById(req.user.id).select("email userName birthDate phone phoneVerified");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      message: "User profile:",
+      user
+    });
+}));
+
 router.put("/updateUser", verifyToken, asyncHandler(async (req , res) => {
 
     const { error } = validateUpdateUser(req.body);
@@ -244,5 +258,55 @@ router.post("/addToFavourite/:productId", verifyToken, asyncHandler(async (req, 
     });
 
 }));
+
+router.delete("/removeFromFavourite/:productId", verifyToken, asyncHandler(async (req, res) => {
+
+    const userId = req.user.id;
+    const { productId } = req.params;
+
+    const favouriteList = await List.findOne({ userId, name: "favourite" });
+
+    if (!favouriteList) {
+        return res.status(404).json({ message: "Favourite list not found" });
+    }
+
+    const item = await ListItem.findOne({
+        listId: favouriteList._id,
+        productId
+    });
+
+    if (!item) {
+        return res.status(404).json({ message: "Product not found in favourite" });
+    }
+
+    await ListItem.deleteOne({ _id: item._id });
+
+    res.status(200).json({
+        message: "Product removed from favourite"
+    });
+
+}));
+
+router.get("/favouriteList", verifyToken, asyncHandler(async (req, res) => {
+
+    const userId = req.user.id;
+
+    const favouriteList = await List.findOne({ userId, name: "favourite" });
+
+    if (!favouriteList) {
+        return res.status(404).json({ message: "Favourite list not found" });
+    }
+
+    const items = await ListItem.find({ listId: favouriteList._id })
+        .populate("productId", "productName price images description");
+
+    res.status(200).json({
+        message: "Favourite products",
+        count: items.length,
+        data: items
+    });
+
+}));
+
 
 module.exports=router
