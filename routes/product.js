@@ -105,6 +105,14 @@ router.post("/admin/addProduct", verifyToken, upload.array("images", 6),asyncHan
 
 }));
 
+router.get('/categories', async (req, res) => {
+
+    const categories = await Category.find();
+
+    res.status(200).json({categories});
+
+});
+
 router.get("/products", verifyToken, asyncHandler(async (req, res) => {
 
     const page = Number(req.query.page) || 1;
