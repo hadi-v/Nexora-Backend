@@ -31,7 +31,7 @@ const OrderSchema = new mongoose.Schema({
 
 const Order = mongoose.model("Order", OrderSchema);
 
-function validateNotes(obj){
+function validateOrder(obj){
     const schema = Joi.object({
         shippingAddressId: Joi.string().required(),
         notes: Joi.string().trim().max(500)
@@ -41,5 +41,5 @@ function validateNotes(obj){
 
 module.exports = { 
   Order,
-  validateNotes
+  validateOrder
 };

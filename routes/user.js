@@ -4,7 +4,7 @@ const asyncHandler = require("express-async-handler");
 const { User , validateUpdateUser } = require("../models/User");
 const { Store , validateUpdateStore } = require("../models/Store");
 const { Product } = require("../models/Product");
-const { List } = require("../models/List");
+const { List , validateList } = require("../models/List");
 const { ListItem } = require("../models/List_Item");
 const { Cart } = require("../models/Cart");
 const { CartItem } = require("../models/Cart_Item");
@@ -15,13 +15,15 @@ const { verifyToken } = require("../middlewares/verifyToken");
 const  upload  = require("../middlewares/upload");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const fs = require("fs");
+const path = require("path");
 const dotenv = require("dotenv");
 dotenv.config();
 
 
 router.get("/profile", verifyToken, asyncHandler(async (req,res) =>{
     
-    const user = await User.findById(req.user.id).select("email userName birthDate phone phoneVerified");
+    const user = await User.findById(req.user.id).select("email userName birthDate phone phoneVerified profileImage");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -33,7 +35,7 @@ router.get("/profile", verifyToken, asyncHandler(async (req,res) =>{
     });
 }));
 
-router.put("/updateUser", verifyToken, asyncHandler(async (req , res) => {
+router.put("/updateUser", verifyToken, upload.single("profileImage"), asyncHandler(async (req , res) => {
 
     const { error } = validateUpdateUser(req.body);
     if (error) {
@@ -53,6 +55,18 @@ router.put("/updateUser", verifyToken, asyncHandler(async (req , res) => {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(req.body.password, salt);
     }
+    if (req.file) {
+
+        if (user.profileImage) {
+            const oldImagePath = path.join(__dirname, "..", "images", user.profileImage);
+
+            if (fs.existsSync(oldImagePath)) {
+                fs.unlinkSync(oldImagePath);
+            }
+        }
+
+        user.profileImage = req.file.filename;
+    }
 
     await user.save();
 
@@ -71,6 +85,15 @@ router.delete("/deleteAccount", verifyToken, asyncHandler(async (req, res) => {
 
     if (!user) {
         return res.status(404).json({ message: "Account not found" });
+    }
+
+    if (user.profileImage) {
+        const oldImagePath = path.join(__dirname, "..", "images", user.profileImage);
+
+        if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);   
+        }
+        
     }
 
     const cart = await Cart.findOne({ userId: req.user.id });
@@ -95,7 +118,7 @@ router.delete("/deleteAccount", verifyToken, asyncHandler(async (req, res) => {
 
 }));
 
-router.put("/admin/updateStore", verifyToken, upload.single("image"),asyncHandler(async (req, res) => {
+router.put("/admin/updateStore", verifyToken, upload.single("image"), asyncHandler(async (req, res) => {
 
     const { error } = validateUpdateStore(req.body);
     if (error) {
@@ -121,9 +144,17 @@ router.put("/admin/updateStore", verifyToken, upload.single("image"),asyncHandle
     if (req.body.storeName) store.storeName = req.body.storeName;
     if (req.body.description) store.description = req.body.description;
     if (req.file) {
-            store.image = req.file.path;
-       }
-       
+
+        if (store.image) {
+            const oldImagePath = path.join(__dirname, "..", "images", store.image);
+
+            if (fs.existsSync(oldImagePath)) {
+                fs.unlinkSync(oldImagePath);
+            }
+        }
+
+        store.image = req.file.filename;
+    }
 
     await store.save();
 
@@ -201,9 +232,7 @@ router.delete("/deleteAddress/:id", verifyToken, asyncHandler(async (req, res) =
     }
 
     if (address.userId.toString() !== req.user.id) {
-
         return res.status(403).json({ message: "You are not allowed to delete this address" });
-
     }
 
     await ShippingAddress.findByIdAndDelete(addressId);
@@ -308,5 +337,194 @@ router.get("/favouriteList", verifyToken, asyncHandler(async (req, res) => {
 
 }));
 
+router.post("/createList", verifyToken, asyncHandler(async (req, res) => {
+
+    const { error } = validateList(req.body);
+    if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const userId = req.user.id;
+    const { name } = req.body;
+
+    const existingList = await List.findOne({ userId, name: name.trim().toLowerCase() });
+    if (existingList) {
+        return res.status(400).json({ message: "List name already exists" });
+    }
+
+    const list = await List.create({
+        userId,
+        name: name.trim().toLowerCase()
+    });
+
+    res.status(201).json({
+        message: "List created successfully",
+        list
+    });
+
+}));
+
+router.post("/addToList", verifyToken, asyncHandler(async (req, res) => {
+
+    const userId = req.user.id;
+    const { listId, productId } = req.body;
+
+    if (!listId || !productId) {
+        return res.status(400).json({ message: "listId and productId are required" });
+    }
+
+    const list = await List.findOne({ _id: listId, userId });
+    if (!list) {
+        return res.status(404).json({ message: "List not found" });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+    }
+
+    const exists = await ListItem.findOne({
+        listId,
+        productId
+    });
+
+    if (exists) {
+        return res.status(400).json({ message: "Product already in this list" });
+    }
+
+    const item = await ListItem.create({
+        listId,
+        productId
+    });
+
+    res.status(201).json({
+        message: "Product added to list",
+        data: item
+    });
+
+}));
+
+router.delete("/removeFromList", verifyToken, asyncHandler(async (req, res) => {
+
+    const userId = req.user.id;
+    const { listId, productId } = req.body;
+
+    if (!listId || !productId) {
+        return res.status(400).json({ message: "listId and productId are required" });
+    }
+
+    const list = await List.findOne({ _id: listId, userId });
+    if (!list) {
+        return res.status(404).json({ message: "List not found" });
+    }
+
+    const item = await ListItem.findOne({
+        listId,
+        productId
+    });
+
+    if (!item) {
+        return res.status(404).json({ message: "Product not found in this list" });
+    }
+
+    await ListItem.deleteOne({ _id: item._id });
+
+    res.status(200).json({
+        message: "Product removed from list"
+    });
+
+}));
+
+router.get("/list/:listId", verifyToken, asyncHandler(async (req, res) => {
+
+    const userId = req.user.id;
+    const { listId } = req.params;
+
+    const list = await List.findOne({ _id: listId, userId });
+    if (!list) {
+        return res.status(404).json({ message: "List not found" });
+    }
+
+    const items = await ListItem.find({ listId })
+        .populate("productId", "productName price images description stock category");
+
+    res.status(200).json({
+        message: "List products",
+        count: items.length,
+        data: items
+    });
+
+}));
+
+router.get("/lists", verifyToken, asyncHandler(async (req, res) => {
+
+    const userId = req.user.id;
+
+    const lists = await List.find({ userId });
+
+    res.status(200).json({
+        message: "User lists",
+        count: lists.length,
+        data: lists
+    });
+
+}));
+
+router.put("/updateListName/:listId", verifyToken, asyncHandler(async (req, res) => {
+
+    const userId = req.user.id;
+    const { listId } = req.params;
+    const { name } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ message: "New list name is required" });
+    }
+
+    const list = await List.findOne({ _id: listId, userId });
+    if (!list) {
+        return res.status(404).json({ message: "List not found" });
+    }
+
+    const newName = name.trim().toLowerCase();
+
+    const exists = await List.findOne({
+        userId,
+        name: newName,
+        _id: { $ne: listId }
+    });
+
+    if (exists) {
+        return res.status(400).json({ message: "List name already exists" });
+    }
+
+    list.name = newName;
+    await list.save();
+
+    res.status(200).json({
+        message: "List name updated successfully",
+        list
+    });
+
+}));
+
+router.delete("/deleteList/:listId", verifyToken, asyncHandler(async (req, res) => {
+
+    const userId = req.user.id;
+    const { listId } = req.params;
+
+    const list = await List.findOne({ _id: listId, userId });
+    if (!list) {
+        return res.status(404).json({ message: "List not found" });
+    }
+
+    await ListItem.deleteMany({ listId });
+
+    await List.deleteOne({ _id: listId });
+
+    res.status(200).json({
+        message: "List deleted successfully"
+    });
+
+}));
 
 module.exports=router

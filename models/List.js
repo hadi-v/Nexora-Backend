@@ -29,4 +29,5 @@ function validateList(obj) {
 
 module.exports = { 
     List,
-    validateList };
+    validateList
+ };

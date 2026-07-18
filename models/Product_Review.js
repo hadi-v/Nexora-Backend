@@ -21,8 +21,7 @@ const ProductReviewSchema = new mongoose.Schema({
     comment: {
         type: String,
         minlength: 5,
-        maxlength: 300,
-        required: true
+        maxlength: 300
     }
 
 }, { timestamps: true });
@@ -32,7 +31,7 @@ const ProductReview = mongoose.model("ProductReview", ProductReviewSchema);
 function validateProductReview(obj) {
     const schema = Joi.object({
         rating: Joi.number().min(1).max(5).required(),
-        comment: Joi.string().min(5).max(300).required()
+        comment: Joi.string().min(5).max(300)
     });
     return schema.validate(obj);
 }

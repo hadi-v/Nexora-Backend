@@ -4,7 +4,7 @@ const asyncHandler = require("express-async-handler");
 const { verifyToken } = require("../middlewares/verifyToken");
 const { Cart } = require("../models/Cart");
 const { CartItem } = require("../models/Cart_Item");
-const { Order , validateNotes } = require("../models/Order");
+const { Order , validateOrder } = require("../models/Order");
 const { OrderItem } = require("../models/Order_Item");
 const { Product } = require("../models/Product");
 const { ShippingAddress } = require("../models/Shipping_Address");
@@ -15,7 +15,7 @@ const { Report , validateReport } = require("../models/Report");
 
 router.post("/createOrder", verifyToken, asyncHandler(async (req, res) => {
 
-    const { error } = validateNotes(req.body);
+    const { error } = validateOrder(req.body);
     
     if (error){
         return res.status(400).json({ message: error.details[0].message });
@@ -445,6 +445,5 @@ router.get("/admin/allOrdersReports", verifyToken, asyncHandler(async (req, res)
     });
 
 }));
-
 
 module.exports = router;

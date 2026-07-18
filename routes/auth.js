@@ -8,6 +8,7 @@ const { List } = require("../models/List");
 const { UserVerification } = require("../models/UserVerification")
 const { BlacklistedToken } = require("../models/BlacklistedToken");
 const { verifyToken } = require("../middlewares/verifyToken");
+const  upload  = require("../middlewares/upload");
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
 dotenv.config();
@@ -21,7 +22,7 @@ let transporter = nodemailer.createTransport({
 });
 
 
-router.post("/register", asyncHandler(async (req, res) => {
+router.post("/register", upload.single("profileImage"), asyncHandler(async (req, res) => {
 
     const { error } = validateRegisterUser(req.body);
 
@@ -32,18 +33,25 @@ router.post("/register", asyncHandler(async (req, res) => {
     let user = await User.findOne({ email: req.body.email });
 
     if (user){
-     return res.status(400).json({ message: "User Already Exist" });
+        return res.status(400).json({ message: "User Already Exist" });
     } 
 
     const salt = await bcrypt.genSalt(10);
     req.body.password = await bcrypt.hash(req.body.password, salt);
+
+    let profileImage = null;
+
+    if (req.file) {
+        profileImage = req.file.filename;
+    }
 
     user = new User({
         email: req.body.email,
         userName: req.body.userName,
         password: req.body.password,
         birthDate: req.body.birthDate,
-        phone: req.body.phone
+        phone: req.body.phone,
+        profileImage: profileImage
     });
 
     const result = await user.save();
@@ -54,7 +62,13 @@ router.post("/register", asyncHandler(async (req, res) => {
 
     res.status(201).json({
         message: "User registered successfully. OTP sent to email.",
-        data: { userId: result._id, email: result.email, token:token, otp:otp}
+        data: { 
+            userId: result._id, 
+            email: result.email, 
+            token: token,
+            otp: otp,
+            profileImage: profileImage
+        }
     });
 
 }));
@@ -324,7 +338,6 @@ const sentOtp = async ({ _id, email }) => {
 
     return otp;
 };
-
 
 module.exports=router;
 

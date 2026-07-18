@@ -213,5 +213,4 @@ router.get("/totalItems", verifyToken, asyncHandler(async (req, res) => {
 
 }));
 
-
 module.exports = router;
